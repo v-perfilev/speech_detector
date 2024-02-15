@@ -1,7 +1,8 @@
 
 torch
-torchaudio
+torchaudio~=2.2.0
 matplotlib
-pyaudio
-keyboard
-pydub
+pyaudio~=0.2.14
+pydub~=0.25.1
+numpy~=1.26.4
+soundfile~=0.12.1

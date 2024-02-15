@@ -1,3 +1,6 @@
+import os
+
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -36,3 +39,12 @@ class SoundClassifier(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+    def save_model(self, dict_path="target/sound_classifier_weights.pth"):
+        os.makedirs('target', exist_ok=True)
+        torch.save(self.state_dict(), dict_path)
+        print('Model saved')
+
+    def load_model(self, dict_path="target/sound_classifier_weights.pth"):
+        self.load_state_dict(torch.load(dict_path))
+        self.eval()
