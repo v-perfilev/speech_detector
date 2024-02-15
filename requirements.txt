@@ -1,3 +1,7 @@
 
 torch
+torchaudio
+matplotlib
 pyaudio
+keyboard
+pydub

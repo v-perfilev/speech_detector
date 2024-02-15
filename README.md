@@ -29,3 +29,5 @@ python app.py
 
 - PyTorch
 - PyAudio
+- Pydub
+- Matplotlib
