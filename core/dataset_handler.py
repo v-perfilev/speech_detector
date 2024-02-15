@@ -103,7 +103,13 @@ class DatasetHandler:
     def __audio_to_spectrogram(self, samples, sample_rate):
         spectrogram_transform = MelSpectrogram(sample_rate, n_mels=64, n_fft=2048)
         spectrogram = spectrogram_transform(samples)
+        spectrogram = self.__normalize_spectrogram(spectrogram)
         return spectrogram
+
+    def __normalize_spectrogram(self, spectrogram):
+        mean = spectrogram.mean()
+        std = spectrogram.std()
+        return (spectrogram - mean) / (std + 1e-6)
 
     def __process_folder(self, base_path, audio_format, limit_per_folder):
         spectrograms = []
@@ -180,14 +186,19 @@ class DatasetHandler:
 
         return TensorDataset(all_spectrograms_tensor, all_labels)
 
-    def __split_dataset_to_data_loaders(self, dataset):
-        dataset_size = len(dataset)
-        train_size = int(dataset_size * 0.8)
-        test_size = dataset_size - train_size
+    def __split_dataset_to_data_loaders(self, dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
+        assert train_ratio + val_ratio + test_ratio == 1, "Ratio sum must be 1"
 
-        train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+        dataset_size = len(dataset)
+        train_size = int(dataset_size * train_ratio)
+        val_size = int(dataset_size * val_ratio)
+        test_size = dataset_size - train_size - val_size
+
+        train_dataset, rest_dataset = random_split(dataset, [train_size, dataset_size - train_size])
+        val_dataset, test_dataset = random_split(rest_dataset, [val_size, test_size])
 
         train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
         test_loader = DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
 
-        return train_loader, test_loader
+        return train_loader, val_loader, test_loader
