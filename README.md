@@ -2,6 +2,8 @@
 
 This app utilizes PyTorch to detect human speech in real-time, distinguishing it from background noise.
 
+For training the model, speech datasets from Mozilla Common Voice and environmental sounds from UrbanSound8K were used.
+
 ## Quick Start
 
 1. Clone the repository:

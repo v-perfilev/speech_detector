@@ -24,7 +24,7 @@ class DataMediator:
                             negative_limit_per_folder):
         print(f"Data import started")
 
-        positive_spectrograms = self.__create_positive_spectrograms(
+        positive_spectrograms = self.__create_spectrograms_with_bg(
             positive_base_path,
             positive_audio_format,
             positive_limit_per_folder,
@@ -32,9 +32,9 @@ class DataMediator:
             negative_audio_format
         )
 
-        print(f"Processed {len(positive_spectrograms)} positive spectrograms")
+        print(f"Processed {len(positive_spectrograms)} positive spectrograms with background sounds")
 
-        negative_spectrograms = self.__create_negative_spectrograms(
+        negative_spectrograms = self.__create_spectrograms(
             negative_base_path,
             negative_audio_format,
             negative_limit_per_folder
@@ -42,14 +42,16 @@ class DataMediator:
 
         print(f"Processed {len(negative_spectrograms)} negative spectrograms")
 
-        dataset = self.dataset_handler.convert_spectrograms_to_dataset(positive_spectrograms, negative_spectrograms)
+        dataset = self.dataset_handler.convert_spectrograms_to_dataset(
+            positive_spectrograms,
+            negative_spectrograms)
         data_loaders = self.dataset_handler.split_dataset_to_data_loaders(dataset)
 
         print(f"Dataloaders imported")
 
         return data_loaders
 
-    def __create_positive_spectrograms(self, path, audio_format, limit_per_folder, bg_path, bg_audio_format):
+    def __create_spectrograms_with_bg(self, path, audio_format, limit_per_folder, bg_path, bg_audio_format):
         file_paths = self.file_handler.get_file_paths(path, audio_format, limit_per_folder)
         bg_file_paths = self.file_handler.get_file_paths(bg_path, bg_audio_format)
 
@@ -65,7 +67,7 @@ class DataMediator:
 
         return spectrograms
 
-    def __create_negative_spectrograms(self, path, audio_format, limit_per_folder):
+    def __create_spectrograms(self, path, audio_format, limit_per_folder):
         file_paths = self.file_handler.get_file_paths(path, audio_format, limit_per_folder)
 
         spectrograms = []
