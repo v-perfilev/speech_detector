@@ -19,8 +19,8 @@ class SoundClassifier(nn.Module):
         self.bn2 = nn.BatchNorm2d(32)
         self.bn3 = nn.BatchNorm2d(64)
         self.dropout = nn.Dropout(p=0.25)
-        self.fc1 = nn.Linear(self.flat_input_size, 64)
-        self.fc2 = nn.Linear(64, 2)
+        self.fc1 = nn.Linear(self.flat_input_size, 128)
+        self.fc2 = nn.Linear(128, 2)
         self.init_weights()
 
     def init_weights(self):
