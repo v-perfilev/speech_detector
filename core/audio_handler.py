@@ -11,13 +11,19 @@ class AudioHandler:
     target_sample_rate = 44100
     target_spectrogram_shape = (64, 128)
     mix_background_volume = 0.3
+    detection_threshold = -40
     n_mels = 64
     n_fft = 2048
 
-    def __init__(self, target_sample_rate=44100, target_spectrogram_shape=(64, 128), mix_bg_volume=0.3):
+    def __init__(self,
+                 target_sample_rate=44100,
+                 target_spectrogram_shape=(64, 128),
+                 mix_bg_volume=0.3,
+                 detection_threshold=-40):
         self.target_sample_rate = target_sample_rate
         self.target_spectrogram_shape = target_spectrogram_shape
         self.mix_background_volume = mix_bg_volume
+        self.detection_threshold = detection_threshold
 
     def load_audio(self, file_path, audio_format):
         if audio_format == 'mp3':
@@ -59,6 +65,10 @@ class AudioHandler:
         spectrogram = self.__normalize_spectrogram(spectrogram)
         spectrogram = self.__adjust_spectrogram_shape(spectrogram)
         return spectrogram
+
+    def is_below_threshold(self, spectrogram):
+        spectrogram_db = torchaudio.transforms.AmplitudeToDB()(spectrogram)
+        return True if spectrogram_db.mean() < self.detection_threshold else False
 
     def __apply_bandpass_filter(self, samples, lowcut=300, highcut=3400, order=5):
         sos = butter(order, [lowcut, highcut], btype='bandpass', fs=self.target_sample_rate, output='sos')
