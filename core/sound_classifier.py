@@ -21,14 +21,6 @@ class SoundClassifier(nn.Module):
         self.dropout = nn.Dropout(p=0.25)
         self.fc1 = nn.Linear(self.flat_input_size, 128)
         self.fc2 = nn.Linear(128, 2)
-        self.init_weights()
-
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
@@ -40,10 +32,16 @@ class SoundClassifier(nn.Module):
         x = self.fc2(x)
         return x
 
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def save_model(self, dict_path="target/sound_classifier_weights.pth"):
         os.makedirs('target', exist_ok=True)
         torch.save(self.state_dict(), dict_path)
-        print('Model saved')
 
     def load_model(self, dict_path="target/sound_classifier_weights.pth"):
         self.load_state_dict(torch.load(dict_path))
