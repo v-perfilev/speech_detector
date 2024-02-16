@@ -23,10 +23,10 @@ class Spectrogram:
         return True if spectrogram_db.mean() < threshold else False
 
     def prepare(self):
-        self.__normalize()
         self.__adjust_form()
         if self.noise_spectrogram is not None:
-            self.__reduce_noise(self.spectrogram)
+            self.__reduce_noise()
+            self.__normalize()
         return self.spectrogram
 
     def __normalize(self):

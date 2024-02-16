@@ -7,7 +7,11 @@ import soundfile as sf
 import torch
 
 from core.audio_handler import AudioHandler
-from core.sound_classifier import SoundClassifier
+from core.spectrogram_model import SpectrogramModel
+from core.spectrum_model import SpectrumModel
+
+is_spectrum_model = False
+threshold_sounds = True
 
 
 def list_microphones():
@@ -38,13 +42,30 @@ def frames_to_audio(frames, rate):
     return audio_file
 
 
-def predict_audio(model, audio_handler, audio_file):
-    samples, rate = audio_handler.load_audio(audio_file, 'wav')
+def predict_spectrum(model, audio_handler, samples):
+    spectrum = audio_handler.audio_to_spectrum(samples)
+    if not threshold_sounds and spectrum.is_below_threshold():
+        return None
+    spectrum = spectrum.prepare()
+    return model(spectrum.unsqueeze(0))
+
+
+def predict_spectrogram(model, audio_handler, samples, rate):
     spectrogram = audio_handler.audio_to_spectrogram(samples, rate)
-    if spectrogram.is_below_threshold():
+    if not threshold_sounds and spectrogram.is_below_threshold():
         return None
     spectrogram = spectrogram.prepare()
-    prediction = model(spectrogram.unsqueeze(0))
+    return model(spectrogram.unsqueeze(0))
+
+
+def predict_audio(model, audio_handler, audio_file):
+    samples, rate = audio_handler.load_audio(audio_file, 'wav')
+    if is_spectrum_model:
+        prediction = predict_spectrum(model, audio_handler, samples)
+    else:
+        prediction = predict_spectrogram(model, audio_handler, samples, rate)
+    if prediction is None:
+        return None
     predicted_class = torch.argmax(prediction, dim=1)
     return predicted_class
 
@@ -64,8 +85,10 @@ class AudioApp:
                                   input_device_index=microphone_idx)
         self.frames = []
         self.running = True
-        self.model = SoundClassifier(64 * 256)
-        self.audio_handler = AudioHandler(target_spectrogram_shape=(64, 256))
+        self.model = SpectrumModel(64 * 384) if is_spectrum_model \
+            else SpectrogramModel(64 * 256)
+        self.model.load_model()
+        self.audio_handler = AudioHandler(target_spectrogram_shape=(64, 256), target_spectrum_size=1025)
 
     def __enter__(self):
         return self
