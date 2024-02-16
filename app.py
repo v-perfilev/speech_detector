@@ -41,8 +41,9 @@ def frames_to_audio(frames, rate):
 def predict_audio(model, audio_handler, audio_file):
     samples, rate = audio_handler.load_audio(audio_file, 'wav')
     spectrogram = audio_handler.audio_to_spectrogram(samples, rate)
-    if audio_handler.is_below_threshold(spectrogram):
+    if audio_handler.is_below_threshold(spectrogram, -35):
         return 0
+    spectrogram = audio_handler.prepare_spectrogram(spectrogram, True)
     prediction = model(spectrogram.unsqueeze(0))
     predicted_class = torch.argmax(prediction, dim=1)
     return predicted_class
