@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import torchaudio
 from pydub import AudioSegment
+from scipy.signal import butter, sosfiltfilt
 from torchaudio.transforms import MelSpectrogram
 from torchaudio.transforms import Resample
 
@@ -36,6 +37,8 @@ class AudioHandler:
             samples = resample_transform(samples)
             rate = self.target_sample_rate
 
+        samples = self.__apply_bandpass_filter(samples)
+
         return samples, rate
 
     def mix_audio_samples(self, main_waveform, background_waveform):
@@ -56,6 +59,11 @@ class AudioHandler:
         spectrogram = self.__normalize_spectrogram(spectrogram)
         spectrogram = self.__adjust_spectrogram_shape(spectrogram)
         return spectrogram
+
+    def __apply_bandpass_filter(self, samples, lowcut=300, highcut=3400, order=5):
+        sos = butter(order, [lowcut, highcut], btype='bandpass', fs=self.target_sample_rate, output='sos')
+        filtered_samples = sosfiltfilt(sos, samples.numpy())
+        return torch.tensor(filtered_samples, dtype=torch.float)
 
     def __normalize_spectrogram(self, spectrogram):
         mean = spectrogram.mean()
