@@ -1,29 +1,30 @@
+import os
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torchaudio
 from pydub import AudioSegment
-from scipy.signal import butter, sosfiltfilt
 from torchaudio.transforms import MelSpectrogram
 from torchaudio.transforms import Resample
 
 
 class AudioHandler:
-    target_sample_rate = 44100
-    target_spectrogram_shape = (64, 128)
-    mix_background_volume = 0.3
-    detection_threshold = -40
+    target_sample_rate = None
+    target_spectrogram_shape = None
+    mix_background_volume = None
     n_mels = 64
     n_fft = 2048
+    noise_spectrogram = None
 
     def __init__(self,
                  target_sample_rate=44100,
                  target_spectrogram_shape=(64, 128),
-                 mix_bg_volume=0.3,
-                 detection_threshold=-40):
+                 mix_background_volume=0.3):
         self.target_sample_rate = target_sample_rate
         self.target_spectrogram_shape = target_spectrogram_shape
-        self.mix_background_volume = mix_bg_volume
-        self.detection_threshold = detection_threshold
+        self.mix_background_volume = mix_background_volume
+        self.noise_spectrogram = self.__prepare_noise_spectrogram()
 
     def load_audio(self, file_path, audio_format):
         if audio_format == 'mp3':
@@ -43,8 +44,6 @@ class AudioHandler:
             samples = resample_transform(samples)
             rate = self.target_sample_rate
 
-        samples = self.__apply_bandpass_filter(samples)
-
         return samples, rate
 
     def mix_audio_samples(self, main_waveform, background_waveform):
@@ -62,18 +61,23 @@ class AudioHandler:
     def audio_to_spectrogram(self, samples, rate):
         spectrogram_transform = MelSpectrogram(rate, n_mels=self.n_mels, n_fft=self.n_fft)
         spectrogram = spectrogram_transform(samples)
+        return self.__adjust_spectrogram_shape(spectrogram)
+
+    def prepare_spectrogram(self, spectrogram, reduce_noise=True):
         spectrogram = self.__normalize_spectrogram(spectrogram)
-        spectrogram = self.__adjust_spectrogram_shape(spectrogram)
+        if reduce_noise:
+            spectrogram = self.__reduce_noise(spectrogram)
         return spectrogram
 
-    def is_below_threshold(self, spectrogram):
+    def is_below_threshold(self, spectrogram, threshold=-35):
         spectrogram_db = torchaudio.transforms.AmplitudeToDB()(spectrogram)
-        return True if spectrogram_db.mean() < self.detection_threshold else False
+        return True if spectrogram_db.mean() < threshold else False
 
-    def __apply_bandpass_filter(self, samples, lowcut=300, highcut=3400, order=5):
-        sos = butter(order, [lowcut, highcut], btype='bandpass', fs=self.target_sample_rate, output='sos')
-        filtered_samples = sosfiltfilt(sos, samples.numpy())
-        return torch.tensor(filtered_samples, dtype=torch.float)
+    def __reduce_noise(self, spectrogram, alpha=1.0):
+        assert spectrogram.shape == self.noise_spectrogram.shape, "Spectrograms must have the same shape"
+        subtracted_spectrogram = spectrogram - alpha * self.noise_spectrogram
+        subtracted_spectrogram = np.maximum(subtracted_spectrogram, 0)
+        return subtracted_spectrogram
 
     def __normalize_spectrogram(self, spectrogram):
         mean = spectrogram.mean()
@@ -93,3 +97,9 @@ class AudioHandler:
             spectrogram = F.pad(spectrogram, pad=padding, mode='constant', value=0)
 
         return spectrogram[:, :target_height, :target_width]
+
+    def __prepare_noise_spectrogram(self):
+        noise_audio_path = os.path.abspath("sounds/white_noise.wav")
+        noise_audio, noise_rate = self.load_audio(noise_audio_path, 'wav')
+        spectrogram = self.audio_to_spectrogram(noise_audio, noise_rate)
+        return self.prepare_spectrogram(spectrogram, reduce_noise=False)

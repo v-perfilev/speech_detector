@@ -16,28 +16,28 @@ class DataMediator:
         self.file_handler = file_handler if file_handler is not None else FileHandler()
 
     def create_data_loaders(self,
-                            positive_base_path,
+                            positive_base_paths,
                             positive_audio_format,
-                            positive_limit_per_folder,
-                            negative_base_path,
+                            positive_limit,
+                            negative_base_paths,
                             negative_audio_format,
-                            negative_limit_per_folder):
+                            negative_limit):
         print(f"Data import started")
 
         positive_spectrograms = self.__create_spectrograms_with_bg(
-            positive_base_path,
+            positive_base_paths,
             positive_audio_format,
-            positive_limit_per_folder,
-            negative_base_path,
+            positive_limit,
+            negative_base_paths,
             negative_audio_format
         )
 
         print(f"Processed {len(positive_spectrograms)} positive spectrograms with background sounds")
 
         negative_spectrograms = self.__create_spectrograms(
-            negative_base_path,
+            negative_base_paths,
             negative_audio_format,
-            negative_limit_per_folder
+            negative_limit
         )
 
         print(f"Processed {len(negative_spectrograms)} negative spectrograms")
@@ -51,9 +51,11 @@ class DataMediator:
 
         return data_loaders
 
-    def __create_spectrograms_with_bg(self, path, audio_format, limit_per_folder, bg_path, bg_audio_format):
-        file_paths = self.file_handler.get_file_paths(path, audio_format, limit_per_folder)
-        bg_file_paths = self.file_handler.get_file_paths(bg_path, bg_audio_format)
+    def __create_spectrograms_with_bg(self, paths, audio_format, limit, bg_paths, bg_audio_format):
+        self.file_handler.set_total_limit(limit)
+        file_paths = self.file_handler.get_file_paths(paths, audio_format)
+        self.file_handler.reset_total_limit()
+        bg_file_paths = self.file_handler.get_file_paths(bg_paths, bg_audio_format)
 
         spectrograms = []
 
@@ -63,18 +65,22 @@ class DataMediator:
             bg_samples, _ = self.audio_handler.load_audio(bg_file_path, bg_audio_format)
             mixed_samples = self.audio_handler.mix_audio_samples(samples, bg_samples)
             spectrogram = self.audio_handler.audio_to_spectrogram(mixed_samples, rate)
+            spectrogram = self.audio_handler.prepare_spectrogram(spectrogram)
             spectrograms.append(spectrogram)
 
         return spectrograms
 
-    def __create_spectrograms(self, path, audio_format, limit_per_folder):
-        file_paths = self.file_handler.get_file_paths(path, audio_format, limit_per_folder)
+    def __create_spectrograms(self, paths, audio_format, limit):
+        self.file_handler.set_total_limit(limit)
+        file_paths = self.file_handler.get_file_paths(paths, audio_format)
+        self.file_handler.reset_total_limit()
 
         spectrograms = []
 
         for file_path in file_paths:
             samples, rate = self.audio_handler.load_audio(file_path, audio_format)
             spectrogram = self.audio_handler.audio_to_spectrogram(samples, rate)
+            spectrogram = self.audio_handler.prepare_spectrogram(spectrogram)
             spectrograms.append(spectrogram)
 
         return spectrograms
