@@ -41,9 +41,9 @@ def frames_to_audio(frames, rate):
 def predict_audio(model, audio_handler, audio_file):
     samples, rate = audio_handler.load_audio(audio_file, 'wav')
     spectrogram = audio_handler.audio_to_spectrogram(samples, rate)
-    if audio_handler.is_below_threshold(spectrogram, -35):
-        return 0
-    spectrogram = audio_handler.prepare_spectrogram(spectrogram, True)
+    if spectrogram.is_below_threshold():
+        return None
+    spectrogram = spectrogram.prepare()
     prediction = model(spectrogram.unsqueeze(0))
     predicted_class = torch.argmax(prediction, dim=1)
     return predicted_class
@@ -64,8 +64,8 @@ class AudioApp:
                                   input_device_index=microphone_idx)
         self.frames = []
         self.running = True
-        self.model = SoundClassifier(64 * 128)
-        self.audio_handler = AudioHandler(target_spectrogram_shape=(64, 128))
+        self.model = SoundClassifier(64 * 256)
+        self.audio_handler = AudioHandler(target_spectrogram_shape=(64, 256))
 
     def __enter__(self):
         return self
@@ -94,7 +94,13 @@ class AudioApp:
             if len(self.frames) >= self.rate / self.chunk * self.analysis_window_seconds:
                 audio_file = frames_to_audio(self.frames, self.rate)
                 predicted_class = predict_audio(self.model, self.audio_handler, audio_file)
-                print(f"Current sound: {'SPEECH' if predicted_class == 1 else 'ENVIRONMENT'}")
+                match predicted_class:
+                    case None:
+                        print("Sound below threshold")
+                    case 0:
+                        print("Current sound: ENVIRONMENT")
+                    case 1:
+                        print("Current sound: SPEECH")
                 self.frames = self.frames[int(self.rate / self.chunk * self.shift_seconds):]
 
 
