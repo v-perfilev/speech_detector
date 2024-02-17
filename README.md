@@ -14,9 +14,11 @@ git clone https://github.com/v-perfilev/speech_detector.git
 
 2. Install the required packages:
 
+
 ```bash
 pip install -r requirements.txt
 ```
+
 
 3. Copy a dataset with speech and environment sound samples to the `../datasets/speech` and `../datasets/sounds`
    directories respectively.
