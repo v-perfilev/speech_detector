@@ -21,6 +21,7 @@ class DatasetHandler:
 
         if count is not None:
             dataset, _ = random_split(dataset, [count, len(dataset) - count])
+
         dataset_size = len(dataset)
         train_size = int(dataset_size * train_ratio)
         val_size = int(dataset_size * val_ratio)
