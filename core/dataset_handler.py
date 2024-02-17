@@ -7,8 +7,8 @@ class DatasetHandler:
 
     def convert_data_to_dataset(self, positive_data, negative_data):
         positive_labels = torch.ones(len(positive_data), dtype=torch.long)
-        negative = torch.zeros(len(negative_data), dtype=torch.long)
-        all_labels = torch.cat((positive_labels, negative), dim=0)
+        negative_labels = torch.zeros(len(negative_data), dtype=torch.long)
+        all_labels = torch.cat((positive_labels, negative_labels), dim=0)
 
         positive_data_tensor = torch.stack(positive_data)
         negative_data_tensor = torch.stack(negative_data)
@@ -16,9 +16,11 @@ class DatasetHandler:
 
         return TensorDataset(all_data_tensor, all_labels)
 
-    def split_dataset_to_data_loaders(self, dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
+    def split_dataset_to_data_loaders(self, dataset, count=None, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
         assert train_ratio + val_ratio + test_ratio == 1, "Ratio sum must be 1"
 
+        if count is not None:
+            dataset, _ = random_split(dataset, [count, len(dataset) - count])
         dataset_size = len(dataset)
         train_size = int(dataset_size * train_ratio)
         val_size = int(dataset_size * val_ratio)

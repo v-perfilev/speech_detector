@@ -12,3 +12,7 @@ Thumbs.db
 # Python
 __pycache__/
 *.py[cod]
+
+# Other
+tmp/
+target/
