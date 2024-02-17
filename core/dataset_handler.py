@@ -3,21 +3,24 @@ from torch.utils.data import TensorDataset, DataLoader, random_split
 
 
 class DatasetHandler:
-    batch_size = 32
+    batch_size = 64
 
-    def convert_spectrograms_to_dataset(self, positive_spectrograms, negative_spectrograms):
-        speech_labels = torch.ones(len(positive_spectrograms), dtype=torch.long)
-        sounds_labels = torch.zeros(len(negative_spectrograms), dtype=torch.long)
-        all_labels = torch.cat((speech_labels, sounds_labels), dim=0)
+    def convert_data_to_dataset(self, positive_data, negative_data):
+        positive_labels = torch.ones(len(positive_data), dtype=torch.long)
+        negative_labels = torch.zeros(len(negative_data), dtype=torch.long)
+        all_labels = torch.cat((positive_labels, negative_labels), dim=0)
 
-        speech_spectrograms_tensor = torch.stack(positive_spectrograms)
-        sounds_spectrograms_tensor = torch.stack(negative_spectrograms)
-        all_spectrograms_tensor = torch.cat((speech_spectrograms_tensor, sounds_spectrograms_tensor), dim=0)
+        positive_data_tensor = torch.stack(positive_data)
+        negative_data_tensor = torch.stack(negative_data)
+        all_data_tensor = torch.cat((positive_data_tensor, negative_data_tensor), dim=0)
 
-        return TensorDataset(all_spectrograms_tensor, all_labels)
+        return TensorDataset(all_data_tensor, all_labels)
 
-    def split_dataset_to_data_loaders(self, dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
+    def split_dataset_to_data_loaders(self, dataset, count=None, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15):
         assert train_ratio + val_ratio + test_ratio == 1, "Ratio sum must be 1"
+
+        if count is not None:
+            dataset, _ = random_split(dataset, [count, len(dataset) - count])
 
         dataset_size = len(dataset)
         train_size = int(dataset_size * train_ratio)
