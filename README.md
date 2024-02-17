@@ -7,16 +7,34 @@ For training the model, speech datasets from Mozilla Common Voice and environmen
 ## Quick Start
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/v-perfilev/speech_detector.git
 ```
 
 2. Install the required packages:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the app:
+3. Copy a dataset with speech and environment sound samples to the `../datasets/speech` and `../datasets/sounds`
+   directories respectively.
+
+
+4. Generate noises by running the `generate_noises.ipynb` Jupiter Notebook.
+
+
+5. Generate and save tensor dataset by running the `generate_dataset.ipynb` Jupiter Notebook. In this and the following
+   step you can set is_spectrum_model for using a spectrum based model. A spectrogram based model will be used
+   otherwise.
+
+
+6. Train the model by running the `model_training.ipynb` Jupiter Notebook.
+
+
+7. Run the app:
+
 ```bash
 python app.py
 ```
