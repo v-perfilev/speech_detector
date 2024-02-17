@@ -6,12 +6,15 @@ import pyaudio
 import soundfile as sf
 import torch
 
-from core.audio_handler import AudioHandler
-from core.spectrogram_model import SpectrogramModel
-from core.spectrum_model import SpectrumModel
+from core.detector_factory import DetectorFactory
 
 is_spectrum_model = False
 threshold_sounds = True
+
+factory = DetectorFactory(is_spectrum_model=is_spectrum_model)
+audio_handler = factory.get_audio_handler()
+model = factory.create_model()
+model.load_model()
 
 
 def list_microphones():
@@ -42,7 +45,7 @@ def frames_to_audio(frames, rate):
     return audio_file
 
 
-def predict_spectrum(model, audio_handler, samples):
+def predict_spectrum(samples):
     spectrum = audio_handler.audio_to_spectrum(samples)
     if not threshold_sounds and spectrum.is_below_threshold():
         return None
@@ -50,7 +53,7 @@ def predict_spectrum(model, audio_handler, samples):
     return model(spectrum.unsqueeze(0))
 
 
-def predict_spectrogram(model, audio_handler, samples, rate):
+def predict_spectrogram(samples, rate):
     spectrogram = audio_handler.audio_to_spectrogram(samples, rate)
     if not threshold_sounds and spectrogram.is_below_threshold():
         return None
@@ -58,12 +61,12 @@ def predict_spectrogram(model, audio_handler, samples, rate):
     return model(spectrogram.unsqueeze(0))
 
 
-def predict_audio(model, audio_handler, audio_file):
+def predict_audio(audio_file):
     samples, rate = audio_handler.load_audio(audio_file, 'wav')
     if is_spectrum_model:
-        prediction = predict_spectrum(model, audio_handler, samples)
+        prediction = predict_spectrum(samples)
     else:
-        prediction = predict_spectrogram(model, audio_handler, samples, rate)
+        prediction = predict_spectrogram(samples, rate)
     if prediction is None:
         return None
     predicted_class = torch.argmax(prediction, dim=1)
@@ -84,11 +87,6 @@ class AudioApp:
                                   input=True, frames_per_buffer=self.chunk,
                                   input_device_index=microphone_idx)
         self.frames = []
-        self.running = True
-        self.model = SpectrumModel(64 * 384) if is_spectrum_model \
-            else SpectrogramModel(64 * 256)
-        self.model.load_model()
-        self.audio_handler = AudioHandler(target_spectrogram_shape=(64, 256), target_spectrum_size=1025)
 
     def __enter__(self):
         return self
@@ -116,7 +114,7 @@ class AudioApp:
 
             if len(self.frames) >= self.rate / self.chunk * self.analysis_window_seconds:
                 audio_file = frames_to_audio(self.frames, self.rate)
-                predicted_class = predict_audio(self.model, self.audio_handler, audio_file)
+                predicted_class = predict_audio(audio_file)
                 match predicted_class:
                     case None:
                         print("Sound below threshold")

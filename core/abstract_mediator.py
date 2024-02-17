@@ -1,28 +1,24 @@
 import random
 from abc import abstractmethod
 
-from core.audio_handler import AudioHandler
-from core.dataset_handler import DatasetHandler
-from core.file_handler import FileHandler
-
 
 class AbstractMediator:
     audio_handler = None
     dataset_handler = None
     file_handler = None
 
-    def __init__(self, audio_handler=None, dataset_handler=None, file_handler=None):
-        self.audio_handler = audio_handler if audio_handler is not None else AudioHandler()
-        self.dataset_handler = dataset_handler if dataset_handler is not None else DatasetHandler()
-        self.file_handler = file_handler if file_handler is not None else FileHandler()
+    def __init__(self, audio_handler, dataset_handler, file_handler):
+        self.audio_handler = audio_handler
+        self.dataset_handler = dataset_handler
+        self.file_handler = file_handler
 
-    def create_data_loaders(self,
-                            positive_base_paths,
-                            positive_audio_format,
-                            positive_limit,
-                            negative_base_paths,
-                            negative_audio_format,
-                            negative_limit):
+    def create_dataset(self,
+                       positive_base_paths,
+                       positive_audio_format,
+                       positive_limit,
+                       negative_base_paths,
+                       negative_audio_format,
+                       negative_limit):
         print(f"Data import started")
 
         positive_data = self.__create_mixed_audio_data(
@@ -45,12 +41,7 @@ class AbstractMediator:
         self.draw_random_example(negative_data)
         print(f"Processed {len(negative_data)} negative data")
 
-        dataset = self.dataset_handler.convert_data_to_dataset(positive_data, negative_data)
-        data_loaders = self.dataset_handler.split_dataset_to_data_loaders(dataset)
-
-        print(f"Dataloaders imported")
-
-        return data_loaders
+        return self.dataset_handler.convert_data_to_dataset(positive_data, negative_data)
 
     def __create_mixed_audio_data(self, positive_paths, audio_format, limit, negative_paths, negative_audio_format):
         self.file_handler.set_total_limit(limit)
@@ -91,4 +82,12 @@ class AbstractMediator:
 
     @abstractmethod
     def draw_random_example(self, data):
+        pass
+
+    @abstractmethod
+    def save_dataset(self, dataset):
+        pass
+
+    @abstractmethod
+    def load_dataset(self):
         pass

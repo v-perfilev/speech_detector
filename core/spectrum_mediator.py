@@ -1,7 +1,9 @@
+import os
 import random
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 from core.abstract_mediator import AbstractMediator
 
@@ -28,3 +30,11 @@ class SpectrumMediator(AbstractMediator):
         plt.title('Spectrum')
         plt.tight_layout()
         plt.show()
+
+    def save_dataset(self, dataset):
+        os.makedirs('tmp', exist_ok=True)
+        torch.save(dataset, 'tmp/spectrum_dataset.pt')
+
+    def load_dataset(self, count=None):
+        dataset = torch.load('tmp/spectrum_dataset.pt')
+        return self.dataset_handler.split_dataset_to_data_loaders(dataset, count=count)

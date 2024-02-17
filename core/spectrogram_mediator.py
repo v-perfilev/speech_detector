@@ -1,6 +1,8 @@
+import os
 import random
 
 import matplotlib.pyplot as plt
+import torch
 import torchaudio
 
 from core.abstract_mediator import AbstractMediator
@@ -27,3 +29,11 @@ class SpectrogramMediator(AbstractMediator):
         plt.title('Spectrogram')
         plt.tight_layout()
         plt.show()
+
+    def save_dataset(self, dataset):
+        os.makedirs('tmp', exist_ok=True)
+        torch.save(dataset, 'tmp/spectrogram_dataset.pt')
+
+    def load_dataset(self, count=None):
+        dataset = torch.load('tmp/spectrogram_dataset.pt')
+        return self.dataset_handler.split_dataset_to_data_loaders(dataset, count=count)
