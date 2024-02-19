@@ -6,14 +6,14 @@ import pyaudio
 import soundfile as sf
 import torch
 
-from core.detector_factory import DetectorFactory
+from core.audio_handler import AudioHandler
+from core.model_factory import get_model
 
-is_spectrum_model = False
-threshold_sounds = True
+use_spectrum = False
+threshold_sounds = False
 
-factory = DetectorFactory(is_spectrum_model=is_spectrum_model)
-audio_handler = factory.get_audio_handler()
-model = factory.create_model()
+audio_handler = AudioHandler()
+model = get_model(use_spectrum=use_spectrum, use_mps=False)
 model.load_model()
 
 
@@ -47,26 +47,26 @@ def frames_to_audio(frames, rate):
 
 def predict_spectrum(samples):
     spectrum = audio_handler.audio_to_spectrum(samples)
-    if not threshold_sounds and spectrum.is_below_threshold():
+    if threshold_sounds and spectrum.is_below_threshold():
         return None
-    spectrum = spectrum.prepare()
+    spectrum = spectrum.get_data()
     return model(spectrum.unsqueeze(0))
 
 
-def predict_spectrogram(samples, rate):
-    spectrogram = audio_handler.audio_to_spectrogram(samples, rate)
-    if not threshold_sounds and spectrogram.is_below_threshold():
+def predict_spectrogram(samples):
+    spectrogram = audio_handler.audio_to_spectrogram(samples)
+    if threshold_sounds and spectrogram.is_below_threshold():
         return None
-    spectrogram = spectrogram.prepare()
+    spectrogram = spectrogram.get_data()
     return model(spectrogram.unsqueeze(0))
 
 
 def predict_audio(audio_file):
-    samples, rate = audio_handler.load_audio(audio_file, 'wav')
-    if is_spectrum_model:
+    samples, rate = audio_handler.load_audio(audio_file)
+    if use_spectrum:
         prediction = predict_spectrum(samples)
     else:
-        prediction = predict_spectrogram(samples, rate)
+        prediction = predict_spectrogram(samples)
     if prediction is None:
         return None
     predicted_class = torch.argmax(prediction, dim=1)
@@ -80,6 +80,7 @@ class AudioApp:
     audio_format = pyaudio.paInt16
     channels = 1
     rate = 44100
+    running = True
 
     def __init__(self, microphone_idx):
         self.p = pyaudio.PyAudio()

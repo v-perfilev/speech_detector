@@ -1,8 +1,5 @@
-import os
-
 import torch
 import torchaudio
-from pydub import AudioSegment
 from torchaudio.transforms import Resample
 
 from core.spectrogram import Spectrogram
@@ -10,33 +7,21 @@ from core.spectrum import Spectrum
 
 
 class AudioHandler:
-    target_sample_rate = None
-    target_spectrum_size = None
-    target_spectrogram_shape = None
-    mix_background_volume = None
-    noise_spectrum = None
-    noise_spectrogram = None
+    n_mels = 64
+    n_fft = 2048
+    hop_length = 512
+    spectrum_size = 1025
+    spectrogram_shape = (64, 256)
 
-    def __init__(self,
-                 target_sample_rate=44100,
-                 target_spectrum_size=1025,
-                 target_spectrogram_shape=(64, 256),
-                 mix_background_volume=0.4):
-        self.target_sample_rate = target_sample_rate
-        self.target_spectrum_size = target_spectrum_size
-        self.target_spectrogram_shape = target_spectrogram_shape
-        self.mix_background_volume = mix_background_volume
-        self.noise_spectrum = self.__prepare_noise_spectrum()
-        self.noise_spectrogram = self.__prepare_noise_spectrogram()
+    def __init__(self, sample_rate=44100, chunk_size=14000):
+        self.target_sample_rate = sample_rate
+        self.chunk_size = chunk_size
 
-    def load_audio(self, file_path, audio_format):
-        if audio_format == 'mp3':
-            audio = AudioSegment.from_mp3(file_path)
-            samples = torch.tensor(audio.get_array_of_samples()).float()
-            rate = audio.frame_rate
-        else:
-            samples, rate = torchaudio.load(file_path)
+    def load_audio(self, file_path):
+        samples, rate = torchaudio.load(file_path)
+        return self.prepare_audio(samples, rate)
 
+    def prepare_audio(self, samples, rate):
         if samples.dim() > 1 and samples.shape[0] == 2:
             samples = samples.mean(dim=0, keepdim=True)
         if samples.dim() == 1:
@@ -49,8 +34,8 @@ class AudioHandler:
 
         return samples, rate
 
-    def mix_audio_samples(self, main_waveform, background_waveform):
-        background_waveform *= self.mix_background_volume
+    def mix_audio_samples(self, main_waveform, background_waveform, background_volume):
+        background_waveform *= background_volume
 
         if main_waveform.shape[1] > background_waveform.shape[1]:
             repeat_times = main_waveform.shape[1] // background_waveform.shape[1] + 1
@@ -61,18 +46,23 @@ class AudioHandler:
 
         return mixed_waveform
 
+    def divide_audio(self, audio):
+        if self.chunk_size > audio.size(0):
+            return []
+        chunks = audio.unfold(0, self.chunk_size, self.chunk_size).contiguous()
+        processed_chunks = []
+        for chunk in chunks:
+            if chunk.size(0) < self.chunk_size:
+                chunk = torch.nn.functional.pad(chunk, (0, self.chunk_size - chunk.size(0)))
+            processed_chunks.append(chunk)
+        return processed_chunks
+
     def audio_to_spectrum(self, samples):
-        return Spectrum(samples, self.target_spectrum_size, self.noise_spectrum)
+        return Spectrum(samples, target_size=self.spectrum_size, n_fft=self.n_fft)
 
-    def audio_to_spectrogram(self, samples, rate):
-        return Spectrogram(samples, rate, self.target_spectrogram_shape, self.noise_spectrogram)
+    def audio_to_spectrogram(self, samples):
+        return Spectrogram(samples, self.target_sample_rate, target_shape=self.spectrogram_shape,
+                           n_mels=self.n_mels, n_fft=self.n_fft, hop_length=self.hop_length)
 
-    def __prepare_noise_spectrum(self):
-        noise_audio_path = os.path.abspath("sounds/white_noise.wav")
-        noise_audio, noise_rate = self.load_audio(noise_audio_path, 'wav')
-        return Spectrum(noise_audio).prepare()
-
-    def __prepare_noise_spectrogram(self):
-        noise_audio_path = os.path.abspath("sounds/white_noise.wav")
-        noise_audio, noise_rate = self.load_audio(noise_audio_path, 'wav')
-        return Spectrogram(noise_audio, noise_rate).prepare()
+    def save_audio(self, audio_data, filename, path="target"):
+        torchaudio.save(path + "/" + filename, audio_data, self.target_sample_rate)

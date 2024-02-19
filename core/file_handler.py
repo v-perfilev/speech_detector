@@ -12,13 +12,7 @@ class FileHandler:
         self.total_limit = total_limit
         self.limit_per_folder = limit_per_folder
 
-    def set_total_limit(self, total_limit):
-        self.total_limit = total_limit
-
-    def reset_total_limit(self):
-        self.total_limit = sys.maxsize
-
-    def get_file_paths(self, base_paths, file_format):
+    def get_file_paths(self, base_paths, file_format, limit=None):
         file_paths = []
 
         for base_path in base_paths:
@@ -33,4 +27,4 @@ class FileHandler:
                         break
 
         random.shuffle(file_paths)
-        return file_paths[:self.total_limit]
+        return file_paths[:limit if limit is not None else self.total_limit]
